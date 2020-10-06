@@ -83,17 +83,6 @@ def write_bio_file_ken(file, text, start_end_positions):
                 print("Something's fishy at %s (expected '%s' from '%s', but got '%s' from '%s')" % (text_pos, nltk_char, nltk_token, text_char, text[text_pos-5:text_pos + 5]))
                 raise Exception()
 
-            if text_char.isspace():
-                pass
-                # if text_pos < len(text):
-                #     # eat whitespace sequence. annotation tool collapses mulitple whitespace
-                #     # so we update the iob_offset with whitespace sequence length - 1.
-                #     text_char = text[text_pos]
-                #     while text_char.isspace() and text_pos + 1 < len(text):
-                #         text_pos += 1
-                #         text_char = text[text_pos]
-                #         iob_offset += 1
-
             else:
                 # eat non-whitespace characters and make a special token out of them
                 non_nltk_token = text_char
@@ -119,24 +108,15 @@ def get_postags_from_nltk(text):
     tokenlist_from_nltk = []
     pos_tag_list_from_nltk = []
     for sent in sents:
-        #print (sent)
         pos_tagged_sent = pos_tag(word_tokenize(sent))
-        #print(pos_tagged_sent)
         for word_with_pos in pos_tagged_sent:
             word = word_with_pos[0]
             partofspeech = word_with_pos[1]
             tokenlist_from_nltk.append(word)
             pos_tag_list_from_nltk.append(partofspeech)
-            #print (word_with_pos[0],word_with_pos[1])
-    #alltokens = norm_and_split_text(text)
 
-    #normalized_text = ' '.join(alltokens)
     text_after_nltk = ' '.join(tokenlist_from_nltk)
-
-    #print(len(text),len(text_after_nltk),len(normalized_text))
     text = re.sub('\s\s+',' ',text)
-    # print (text)
-    # print(text_after_nltk)
 
     corrected_text_after_nltk = ''
     corrected_pos_tag_list_from_nltk = []
@@ -145,16 +125,12 @@ def get_postags_from_nltk(text):
         if j >= len(text_after_nltk) or text_after_nltk[j] == ' ':
             partofspeech = pos_tag_list_from_nltk.pop(0)
             word = tokenlist_from_nltk.pop(0)
-            #print (word,partofspeech)
 
             if text[i] == ' ':
                 corrected_pos_tag_list_from_nltk.append(partofspeech)
-                #print ("corrected:",word,"appended:",partofspeech)
 
             else:
                 j += 1
-        #else:
-            #print(text[i],text_after_nltk[j])
         corrected_text_after_nltk += text_after_nltk[j]
 
         j+=1
@@ -164,8 +140,6 @@ def get_postags_from_nltk(text):
     print (corrected_text_after_nltk)
 
 
-    #print (text)
-    #print (normalized_text)
     return corrected_pos_tag_list_from_nltk
 
 
@@ -225,9 +199,6 @@ if __name__ == "__main__":
                         shortest_distance = delta
                         best_found = found
                         
-
-                # if best_found != entity.start_pos:
-                #     print("Discrepancy for %s. Found at %s, expected %s, delta %s " % (entity.eid, best_found, entity.start_pos, shortest_distance))
                 if best_found <= 0:
                     print("Discrepancy in start pos. Found at %s, expected %s, delta %s " % (best_found, entity.start_pos, shortest_distance))
 
