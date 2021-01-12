@@ -200,18 +200,20 @@ class NerProcessor(DataProcessor):
 class PatentProcessor(NerProcessor):
     """Processor for the CoNLL-2003 data set."""
 
-    def get_train_examples(self, data_dir):
+    def get_train_examples(self, data_dir, train_ratio = 17/22):
         """See base class."""
-        patent_train_files = os.listdir(data_dir)[:-5]
+        patent_files = os.listdir(data_dir)
+        patent_train_files = patent_files[:round(len(patent_files)*train_ratio)]
         return self._create_examples(data_dir, patent_train_files, "train")
 
     # def get_dev_examples(self, data_dir):
     #     """See base class."""
     #     return self._create_examples(data_dir, patent_test_files, "dev")
 
-    def get_test_examples(self, data_dir):
+    def get_test_examples(self, data_dir, train_ratio = 17/22):
         """See base class."""
-        patent_test_files = os.listdir(data_dir)[-5:]
+        patent_files = os.listdir(data_dir)
+        patent_test_files = patent_files[round(len(patent_files)*train_ratio):]
         return self._create_examples(data_dir, patent_test_files, "test")
 
     def get_all_examples(self, data_dir):
@@ -512,11 +514,6 @@ def main():
                         help="Bert pre-trained model selected in the list: bert-base-uncased, "
                         "bert-large-uncased, bert-base-cased, bert-large-cased, bert-base-multilingual-uncased, "
                         "bert-base-multilingual-cased, bert-base-chinese.")
-    parser.add_argument("--task_name",
-                        default=None,
-                        type=str,
-                        required=True,
-                        help="The name of the task to train.")
     parser.add_argument("--output_dir",
                         default=None,
                         type=str,
@@ -543,9 +540,10 @@ def main():
     parser.add_argument("--do_leave_one_out",
                         action='store_true',
                         help="Whether to run leave one out evaluation.")
-    parser.add_argument("--eval_on",
-                        default="dev",
-                        help="Whether to run eval on the dev set or test set.")
+    parser.add_argument("--train_ratio",
+                        default=0.77,
+                        type=float,
+                        help="Proportion of the dataset used for training vs evaluation")
     parser.add_argument("--do_lower_case",
                         action='store_true',
                         help="Set this flag if you are using an uncased model.")
@@ -644,25 +642,15 @@ def main():
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
 
-
     
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
-
-    task_name = args.task_name.lower()
-    if task_name == "ner":
-        processor = NerProcessor(labels=["O", "B-MISC", "I-MISC",  "B-PER", "I-PER", "B-ORG", "I-ORG", "B-LOC", "I-LOC"]) # TODO get the connl labels back
-    elif task_name == "patent":
-        processor = PatentProcessor()
-    else:
-        raise ValueError("Task not found: %s" % (task_name))
-
+    processor = PatentProcessor()
     label_list = processor.get_labels()
     num_labels = len(label_list) + 1 # +1 to account for padding
     label_map = { label: i for i, label in enumerate(label_list,1)}
 
-    
 
     if args.do_train or args.do_leave_one_out:
 
@@ -686,7 +674,7 @@ def main():
 
 
         if args.do_train:
-            train_examples = processor.get_train_examples(args.data_dir)
+            train_examples = processor.get_train_examples(args.data_dir, args.train_ratio)
             model = train_on_examples(train_examples, args, processor, label_map, config, tokenizer, device, n_gpu)
 
             # Save a trained model and the associated configuration
@@ -696,7 +684,7 @@ def main():
             model_config = {"bert_model":args.bert_model,"do_lower":args.do_lower_case,"max_seq_length":args.max_seq_length,"num_labels":num_labels,"label_map":label_map}
             json.dump(model_config,open(os.path.join(args.output_dir,"model_config.json"),"w"))
         else:
-            examples = processor.get_all_examples(args.data_dir)
+            examples = processor.get_all_examples(args.data_dir, args.train_ratio)
 
             total_y_pred = []
             total_y_true = []
@@ -739,12 +727,7 @@ def main():
         model, optimizer = prep_model(model, None, n_gpu, args)
 
     if args.do_eval and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
-        if args.eval_on == "dev":
-            eval_examples = processor.get_dev_examples(args.data_dir)
-        elif args.eval_on == "test":
-            eval_examples = processor.get_test_examples(args.data_dir)
-        else:
-            raise ValueError("eval on dev or test set only")
+        eval_examples = processor.get_test_examples(args.data_dir, args.train_ratio)
         
         eval_results = evaluate_on_examples(eval_examples, args, processor, label_map, label_list, model, tokenizer, device, n_gpu)
         y_pred = [ res["predictions"] for res in eval_results ]
