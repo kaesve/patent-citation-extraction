@@ -2,6 +2,16 @@
 
 Use BERT-based models to extract references to scientific literature in patent texts. This repository includes the preprocessing pipeline, the script to train and evaluate the BERT model and the data used to finetune the models.
 
+Read more at [Improving reference mining in patents with BERT](https://arxiv.org/abs/2101.01039).
+
+# Finetuned models
+
+I finetuned three models for this project:
+
+- [Based on BERT](https://huggingface.co/kaesve/BERT_patent_reference_extraction)
+- [Based on BioBERT](https://huggingface.co/kaesve/BioBERT_patent_reference_extraction)
+- [Based on SciBERT](https://huggingface.co/kaesve/SciBERT_patent_reference_extraction) <-- this one seems to perform the best, though the differences are small
+
 # Requirements
 
 - `python3`
