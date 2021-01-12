@@ -29,10 +29,10 @@ This example uses the `bert-base-cased` model that is hosted by Huggingface, whi
 
 ## Run leave-one-out evaluation
 
-`python run_ner_patent_clean.py --data_dir=data/bio --bert_model=bert-base-cased --max_seq_length=64 --do_leave_one_out --num_train_epochs 5 --do_eval --warmup_proportion=0.1 --output_dir=out_leave_one_out`
+`python run_ner.py --data_dir=data/bio --bert_model=bert-base-cased --max_seq_length=64 --do_leave_one_out --num_train_epochs 5 --do_eval --warmup_proportion=0.1 --output_dir=out_leave_one_out`
 
 ## Use a finetuned model on new data
 
-`python run_ner_patent_clean.py --data_dir=data/new_data --bert_model=./path/to/model --task_name=ner --output_dir=out_results --max_seq_length=64 --do_eval --train_ratio=0`
+`python run_ner.py --data_dir=data/new_data --bert_model=./path/to/model --task_name=ner --output_dir=out_results --max_seq_length=64 --do_eval --train_ratio=0`
 
 Note the `--train_ratio=0`, meaning none of the data files will be kept separate for training, and evaluation is run on all files.
