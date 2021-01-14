@@ -5,11 +5,6 @@ from nltk import pos_tag
 from nltk import word_tokenize
 from nltk import sent_tokenize
 
-ann_in_directory = "./ann"
-txt_in_directory = "./txt"
-""" the text directory should contain the same files as the ann directory """
-bio_out_directory = "./bio"
-
 
 class Entity:
     # The class "constructor" - It's actually an initializer
@@ -70,8 +65,6 @@ def process_patent(text, start_end_positions):
                 nltk_index = nltk_index + 1
                 result.append((nltk_token, nltk_tag, iob_tag))
                 
-                file.write(("\t".join((nltk_token, nltk_tag, iob_tag)) + "\n").encode("UTF-8"))
-                
                 if iob_tag == "B":
                     iob_tag = "I"
         else:
@@ -79,14 +72,14 @@ def process_patent(text, start_end_positions):
                 print("Something's fishy at %s (expected '%s' from '%s', but got '%s' from '%s')" % (text_pos, nltk_char, nltk_token, text_char, text[text_pos-5:text_pos + 5]))
                 raise Exception()
 
+            if text_char.isspace():
+                pass
             else:
                 # eat non-whitespace characters and make a special token out of them
                 non_nltk_token = text_char
-                text_char = text[text_pos]
-                while not text_char.isspace() and text_pos < len(text):
-                    non_nltk_token += text_char
+                while text_pos < len(text) and not text[text_pos].isspace():
+                    non_nltk_token += text[text_pos]
                     text_pos += 1
-                    text_char = text[text_pos]
 
                 if len(non_nltk_token) > 0:
                     result.append((non_nltk_token, non_nltk_token, iob_tag))
@@ -98,9 +91,16 @@ def process_patent(text, start_end_positions):
 
 if __name__ == "__main__":
 
-    entity_files = set(filter_files(".ann", ann_in_directory))
+    # TODO: It would be nicer to make these command line arguments.
+    ann_in_directory = "./ann"
+    txt_in_directory = "./txt"
+    """ the text directory should contain the same files as the ann directory """
+    bio_out_directory = "./bio_test"
 
-    for filename in filter_files(".txt", txt_in_directory):
+
+    entity_files = set(filter_files(".ann", os.listdir(ann_in_directory)))
+
+    for filename in filter_files(".txt", os.listdir(txt_in_directory)):
         if filename not in entity_files:
             print("ERROR: Text file has no equivalent in ann directory:",filename)
             continue
@@ -108,7 +108,7 @@ if __name__ == "__main__":
         print(filename)
         
         # Parse entities
-        with open(f"{ann_in_directory}/{filename}.ann",'r', encoding='utf-8') as ann_file:
+        with open(f"{ann_in_directory}/{filename}.ann", 'r', encoding='utf-8') as ann_file:
             entities = []
             for line in ann_file:
                 T_id, type_start_end, entity_text = line.rstrip().split("\t")
@@ -116,7 +116,7 @@ if __name__ == "__main__":
                 entities.append(Entity(T_id, start_pos, end_pos, entity_text))
 
 
-        with open(txt_in_directory+"/"+filename,'r', encoding='utf-8') as txt_file:
+        with open(f"{txt_in_directory}/{filename}.txt", 'r', encoding='utf-8') as txt_file:
             text = txt_file.read()
 
         text = re.sub('\r\n','\n', text)
@@ -150,7 +150,9 @@ if __name__ == "__main__":
 
         # Preprocess patent
         processed = process_patent(text, start_end_positions)
-        with open(bio_out_directory+"/"+filename.replace('txt','bio'),'wb') as out_bio:
-            out_bio.writelines(processed)
+        with open(f"{bio_out_directory}/{filename}.bio", 'wb') as out_bio:
+            for token in processed:
+                line = "\t".join(token) + "\n"
+                out_bio.write(line.encode("UTF-8"))
 
 
