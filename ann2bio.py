@@ -19,8 +19,11 @@ class Entity:
         self.end_pos = int(end_pos)
         self.entity_text = entity_text
 
+def filter_files(ext, ls):
+    return [ name[:-len(ext)] for name in ls if name[-len(ext):] == ext ]
 
-def write_bio_file_ken(file, text, start_end_positions):
+
+def process_patent(text, start_end_positions):
     iob_points = []
 
     for start in sorted(start_end_positions):
@@ -87,76 +90,67 @@ def write_bio_file_ken(file, text, start_end_positions):
 
                 if len(non_nltk_token) > 0:
                     result.append((non_nltk_token, non_nltk_token, iob_tag))
-                    
-                    file.write(("\t".join((non_nltk_token, non_nltk_token, iob_tag)) + "\n").encode("UTF-8"))
 
                     if iob_tag == "B":
                         iob_tag = "I"
-
+    return result
 
 
 if __name__ == "__main__":
 
-    """
-    READ .ann FILES
-    """
-    entities_per_file = dict()
-    for filename in os.listdir(ann_in_directory):
-        if ".ann" in filename:
-            print (filename)
-            with open(ann_in_directory+"/"+filename,'r', encoding='utf-8') as ann_file:
-                entities = []
-                for line in ann_file:
-                    (T_id,type_start_end,entity_text) = line.rstrip().split("\t")
-                    (entity_type,start_pos,end_pos) = type_start_end.split(" ")
-                    entity = Entity(T_id,start_pos,end_pos,entity_text)
-                    entities.append(entity)
-                entities_per_file[filename.replace('.ann','')] = entities
+    entity_files = set(filter_files(".ann", ann_in_directory))
 
-    """
-    READ CORRESPONDING .txt FILES
-    """
-    for filename in os.listdir(txt_in_directory):
-        if ".txt" in filename:
-            if filename.replace('.txt','') not in entities_per_file:
-                print("ERROR: Text file has no equivalent in ann directory:",filename)
-                break
+    for filename in filter_files(".txt", txt_in_directory):
+        if filename not in entity_files:
+            print("ERROR: Text file has no equivalent in ann directory:",filename)
+            continue
 
-            print(filename)
-            entities = entities_per_file[filename.replace('.txt','')]
+        print(filename)
+        
+        # Parse entities
+        with open(f"{ann_in_directory}/{filename}.ann",'r', encoding='utf-8') as ann_file:
+            entities = []
+            for line in ann_file:
+                T_id, type_start_end, entity_text = line.rstrip().split("\t")
+                entity_type, start_pos, end_pos = type_start_end.split(" ")
+                entities.append(Entity(T_id, start_pos, end_pos, entity_text))
 
 
-            text = ''
-            with open(txt_in_directory+"/"+filename,'r', encoding='utf-8') as txt_file:
-                text = txt_file.read()
+        with open(txt_in_directory+"/"+filename,'r', encoding='utf-8') as txt_file:
+            text = txt_file.read()
 
+        text = re.sub('\r\n','\n', text)
+        text = re.sub('\s\s+',' ', text)
 
-            print(len(text))
-            text = re.sub('\r\n','\n',text)
-            text = re.sub('\s\s+',' ',text)
-            print(len(text))
+        # Realign annotations -- the annotation tool used slightly different versions of the text
+        # files, so the ranges from the annotation file do not align with our text files.
+        #
+        # We use the full strings provided by the annotation file, to find the exact match in our
+        # file that is closest to the corresponding text range for that annotation. This isn't
+        # perfect, but works in most cases. The remaining cases will be logged and can be cleaned 
+        # up by hand if desired.
+        start_end_positions = dict()
+        for entity in entities:    
+            shortest_distance = len(text)
+            best_found = 0
+            found = 0
+            while found != -1:
+                found = text.find(entity.entity_text.strip(), found + 1)
 
-            start_end_positions = dict()
-            for entity in entities:
-                
-                shortest_distance = len(text)
-                best_found = 0
-                found = 0
-                while found != -1:
-                    found = text.find(entity.entity_text.strip(), found + 1)
+                delta = abs(found - entity.start_pos)
+                if delta < shortest_distance:
+                    shortest_distance = delta
+                    best_found = found
+                    
+            if best_found <= 0:
+                print("Discrepancy in start pos. Found at %s, expected %s, delta %s " % (best_found, entity.start_pos, shortest_distance))
 
-                    delta = abs(found - entity.start_pos)
-                    if delta < shortest_distance:
-                        shortest_distance = delta
-                        best_found = found
-                        
-                if best_found <= 0:
-                    print("Discrepancy in start pos. Found at %s, expected %s, delta %s " % (best_found, entity.start_pos, shortest_distance))
+            start_end_positions[best_found] = best_found + (entity.end_pos - entity.start_pos)
+            
 
-                start_end_positions[best_found] = best_found + (entity.end_pos - entity.start_pos)
-                
-
-            with open(bio_out_directory+"/"+filename.replace('txt','bio'),'wb') as out_bio:
-                write_bio_file_ken(out_bio, text, start_end_positions)
+        # Preprocess patent
+        processed = process_patent(text, start_end_positions)
+        with open(bio_out_directory+"/"+filename.replace('txt','bio'),'wb') as out_bio:
+            out_bio.writelines(processed)
 
 
