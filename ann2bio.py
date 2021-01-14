@@ -18,7 +18,7 @@ def filter_files(ext, ls):
     return [ name[:-len(ext)] for name in ls if name[-len(ext):] == ext ]
 
 
-def process_patent(text, start_end_positions):
+def process_patent(text, start_end_positions = dict()):
     iob_points = []
 
     for start in sorted(start_end_positions):
