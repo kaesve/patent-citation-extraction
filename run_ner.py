@@ -30,6 +30,8 @@ import json
 from sklearn_crfsuite import scorers
 from sklearn_crfsuite import metrics
 
+import ann2bio
+
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
@@ -224,8 +226,16 @@ class PatentProcessor(NerProcessor):
     def _create_examples(self, data_dir, files, set_type):
         examples = []
         for f in files:
-            sentence, label = load_bio_file(os.path.join(data_dir, f), sep="\t")[0]
+            if f[-4:] == ".bio":
+                sentence, label = load_bio_file(os.path.join(data_dir, f), sep="\t")[0]
+            elif f[-4:] == ".txt":
+                with open(os.path.join(data_dir, f), "r", encoding="utf-8") as txt:
+                    tokens = ann2bio.process_patent(txt.read())
+                    sentence, _, label = zip(*tokens)
+            
             examples.append(InputExample(guid=f, tokens_a=sentence, label=label))
+
+
         return examples
 
     def convert_examples_to_features(self, examples, label_map, max_seq, tokenizer):
