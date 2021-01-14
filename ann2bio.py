@@ -8,8 +8,7 @@ from nltk import sent_tokenize
 ann_in_directory = "./ann"
 txt_in_directory = "./txt"
 """ the text directory should contain the same files as the ann directory """
-bio_out_directory = "./bio_orig"
-bio_out_directory2 = "./bio_ken"
+bio_out_directory = "./bio"
 
 
 class Entity:
@@ -19,12 +18,6 @@ class Entity:
         self.start_pos = int(start_pos)
         self.end_pos = int(end_pos)
         self.entity_text = entity_text
-
-
-def norm_and_split_text(t):
-    text = re.sub('[^a-zèéeêëėęûüùúūôöòóõœøîïíīįìàáâäæãåçćč&@#A-ZÇĆČÉÈÊËĒĘÛÜÙÚŪÔÖÒÓŒØŌÕÎÏÍĪĮÌ0-9_ \']', "*", t)
-    wrds = text.split()
-    return wrds
 
 
 def write_bio_file_ken(file, text, start_end_positions):
@@ -102,47 +95,6 @@ def write_bio_file_ken(file, text, start_end_positions):
 
 
 
-
-def get_postags_from_nltk(text):
-    sents = sent_tokenize(text)
-    tokenlist_from_nltk = []
-    pos_tag_list_from_nltk = []
-    for sent in sents:
-        pos_tagged_sent = pos_tag(word_tokenize(sent))
-        for word_with_pos in pos_tagged_sent:
-            word = word_with_pos[0]
-            partofspeech = word_with_pos[1]
-            tokenlist_from_nltk.append(word)
-            pos_tag_list_from_nltk.append(partofspeech)
-
-    text_after_nltk = ' '.join(tokenlist_from_nltk)
-    text = re.sub('\s\s+',' ',text)
-
-    corrected_text_after_nltk = ''
-    corrected_pos_tag_list_from_nltk = []
-    j=0
-    for i in range(0,len(text)-1):
-        if j >= len(text_after_nltk) or text_after_nltk[j] == ' ':
-            partofspeech = pos_tag_list_from_nltk.pop(0)
-            word = tokenlist_from_nltk.pop(0)
-
-            if text[i] == ' ':
-                corrected_pos_tag_list_from_nltk.append(partofspeech)
-
-            else:
-                j += 1
-        corrected_text_after_nltk += text_after_nltk[j]
-
-        j+=1
-
-
-    print (text)
-    print (corrected_text_after_nltk)
-
-
-    return corrected_pos_tag_list_from_nltk
-
-
 if __name__ == "__main__":
 
     """
@@ -160,7 +112,6 @@ if __name__ == "__main__":
                     entity = Entity(T_id,start_pos,end_pos,entity_text)
                     entities.append(entity)
                 entities_per_file[filename.replace('.ann','')] = entities
-            ann_file.close()
 
     """
     READ CORRESPONDING .txt FILES
